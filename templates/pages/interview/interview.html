@@ -820,10 +820,18 @@
     userSource.connect(userProcessor);
     userProcessor.connect(audioContext.destination);
 
-    let mimeType = 'audio/webm';  // Default mimeType
-    if (MediaRecorder.isTypeSupported('audio/mp4')) {
-      mimeType = 'audio/mp4';  // Use MP4 if supported
+    // Try different audio formats in order of compatibility with FFmpeg
+    let mimeType = 'audio/webm';  // Default fallback
+    
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      mimeType = 'audio/webm;codecs=opus';  // WebM with Opus codec
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      mimeType = 'audio/mp4';  // MP4 audio
+    } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+      mimeType = 'audio/ogg;codecs=opus';  // OGG with Opus
     }
+    
+    console.log('Using audio format:', mimeType);
 
     // Initializing MediaRecorder
     mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });

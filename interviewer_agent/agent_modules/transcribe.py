@@ -20,22 +20,12 @@ def jsp_log(message):
 
 def transcribe_voice(audio_buffer, optional_key_phrases=["my name is Joon"]):
   """
-  Transcribes voice from an audio buffer using Google Speech-to-Text and 
-  OpenAI's Whisper.
+  Transcribes voice from an audio buffer using OpenAI's Whisper.
 
-  The function first converts the audio buffer to an AudioSegment object to 
-  determine its duration. If the audio is shorter than 20 seconds, it uses 
-  Google's Speech-to-Text API for transcription, leveraging a service account 
-  for authentication and enabling automatic punctuation.
-
-  (Note: even when we use Google API, we still run this through Whisper, 
-  which is more accurate. This is to compensate for Whisper's downside, which
-  is that it is weak against empty audio as it hallucinates.)
-
-  In case there are no results from Google's API, or if the audio is longer 
-  than 20 seconds, the function then utilizes OpenAI's Whisper model. The 
-  model is provided with the language setting and optional key phrases to 
-  assist in the transcription process.
+  The function converts the audio buffer to determine its duration and then
+  uses OpenAI's Whisper model for transcription. The model is provided with 
+  the language setting and optional key phrases to assist in the transcription 
+  process.
 
   Args:
     audio_buffer (BytesIO): A buffer containing the audio data.
@@ -51,41 +41,27 @@ def transcribe_voice(audio_buffer, optional_key_phrases=["my name is Joon"]):
   jsp_log("Starting to actually transcribe user's voice")
   jsp_log(f"Audio duration: {duration_seconds} seconds")
 
-  if duration_seconds < 20: 
-    # Use service account credentials by specifying the private key file
-    g_client = speech.SpeechClient.from_service_account_json(GOOGLE_CRED_PATH)
-
-    # The buffer's bytes can be directly used as the content
-    content = audio_buffer.getvalue()
-    audio = speech.RecognitionAudio(content=content)
-
-    # Configure the request with the desired parameters
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        language_code="en-US",
-        enable_automatic_punctuation=True  # Enable automatic punctuation
-    )
-    # Transcribe the audio file
-    response = g_client.recognize(config=config, audio=audio)
-
-    jsp_log(f"From Google API: {response.results}")
-    if not response.results: 
-      jsp_log("Ending transcription with an empty str")
-      return ""
-
+  # Skip Google Speech API since GOOGLE_CRED_PATH is not configured
+  # Use OpenAI Whisper directly for all audio transcription
+  
   # For capturing hard to spell words, like names
   optional_key_phrases = ', '.join(optional_key_phrases)
   audio_buffer.name = "file.wav"
-  whisper_completion = openai.audio.transcriptions.create(
-    model="whisper-1", 
-    file=audio_buffer,
-    language="en",
-    prompt=optional_key_phrases)
-  user_speech = whisper_completion.text
+  
+  try:
+    whisper_completion = openai.audio.transcriptions.create(
+      model="whisper-1", 
+      file=audio_buffer,
+      language="en",
+      prompt=optional_key_phrases)
+    user_speech = whisper_completion.text
 
-  jsp_log(f"Whisper API keyword: {optional_key_phrases}")
-  jsp_log(f"From Whisper API: {user_speech}")
-  return user_speech
+    jsp_log(f"Whisper API keyword: {optional_key_phrases}")
+    jsp_log(f"From Whisper API: {user_speech}")
+    return user_speech
+  except Exception as e:
+    jsp_log(f"Error in Whisper transcription: {e}")
+    return "..."
 
 
 def threaded_transcribe_voice(audio_buffer, 

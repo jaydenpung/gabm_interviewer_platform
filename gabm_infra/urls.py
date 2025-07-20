@@ -47,7 +47,12 @@ pages_urlpatterns = [
 urlpatterns = [
   path('admin/', admin.site.urls),
   path('accounts/', include('allauth.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+  # Custom media serving - put first for priority
+  re_path(r'^media/(?P<path>.*)$', pages_views.serve_media, name='serve_media'),
+]
+
+# Serve static files (always, regardless of DEBUG setting) 
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 urlpatterns += pages_urlpatterns
 

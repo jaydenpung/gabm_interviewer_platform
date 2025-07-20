@@ -1,7 +1,7 @@
 from .base import *
 
 # Production specific settings
-DEBUG = False
+# DEBUG setting is inherited from base.py (respects environment variable)
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
 
 # Security settings for production

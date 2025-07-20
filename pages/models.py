@@ -38,27 +38,50 @@ def jsp_log(message):
 
 def process_audio(base64_message, audio_format):
   # Ensure audio_format is lowercased for consistency
-  audio_format = audio_format.lower()
+  audio_format = audio_format.lower() if audio_format else 'webm'
   # Modify format for MP4 audio
   jsp_log(f"Currently received audio format: {audio_format}")
+  
+  # Normalize audio format
   if audio_format in ['mp4', 'audio/mp4']:
     audio_format = 'mp4'  # FFmpeg recognizes 'mp4' for MP4 audio files
-  elif audio_format in ['webm', 'audio/webm']:
-    audio_format = 'webm'  # Add support for WebM format
+  elif audio_format in ['webm', 'audio/webm'] or 'webm' in audio_format:
+    audio_format = 'webm'  # Add support for WebM format (with or without codecs)
+  elif audio_format in ['ogg', 'audio/ogg'] or 'ogg' in audio_format:
+    audio_format = 'ogg'  # Add support for OGG format (with or without codecs)
   else: 
-    audio_format
+    jsp_log(f"Unknown audio format: {audio_format}, defaulting to webm")
+    audio_format = 'webm'
 
-  base64_message = base64_message.split(",")[1]
-  # Step 1: Decode the base64 string to bytes
-  base64_bytes = base64.b64decode(base64_message)
-
-  # Step 2: Convert the binary data to a BytesIO object (in-memory buffer)
-  audio_data = io.BytesIO(base64_bytes)
-
+  # Validate base64 data
+  if not base64_message or ',' not in base64_message:
+    jsp_log("Invalid base64 message format")
+    return create_silent_audio()
+    
   try:
+    base64_message = base64_message.split(",")[1]
+    # Step 1: Decode the base64 string to bytes
+    base64_bytes = base64.b64decode(base64_message)
+    jsp_log(f"Decoded audio data size: {len(base64_bytes)} bytes")
+    
+    if len(base64_bytes) < 100:  # Too small to be valid audio
+      jsp_log("Audio data too small, creating silent audio")
+      return create_silent_audio()
+
+    # Step 2: Convert the binary data to a BytesIO object (in-memory buffer)
+    audio_data = io.BytesIO(base64_bytes)
+
     # Step 3: Read the audio from BytesIO, then convert & export it as WAV
     # The format is dynamically set based on the audio_format argument
     audio = AudioSegment.from_file(audio_data, format=audio_format)
+    
+    # Validate audio duration
+    if len(audio) == 0:
+      jsp_log("Audio segment is empty, creating silent audio")
+      return create_silent_audio()
+      
+    jsp_log(f"Audio loaded successfully: duration={len(audio)}ms, channels={audio.channels}")
+    
     # Ensure audio is set to 16-bit samples (sample_width=2 bytes for 16 bit)
     audio = audio.set_sample_width(2)
     # Optional: Set a frame rate. Common rates: 16000, 44100, etc.
@@ -69,28 +92,33 @@ def process_audio(base64_message, audio_format):
     buffer = io.BytesIO()
     audio.export(buffer, format="wav", parameters=["-ac", "1", "-ar", "16000"])
     buffer.seek(0)
+    jsp_log(f"Audio converted to WAV successfully, size: {len(buffer.getvalue())} bytes")
     return buffer
   except Exception as e:
     jsp_log(f"Error processing audio with pydub: {e}")
     jsp_log("Creating silent audio as fallback")
-    # Create a silent audio segment as fallback
-    import wave
-    
-    # Create a 1-second silent audio file
-    sample_rate = 16000
-    duration = 1.0
-    frames = int(sample_rate * duration)
-    
-    # Create in-memory WAV file
-    buffer = io.BytesIO()
-    with wave.open(buffer, 'wb') as wav_file:
-        wav_file.setnchannels(1)  # Mono
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(sample_rate)
-        wav_file.writeframes(b'\x00\x00' * frames)  # Silent audio
-    
-    buffer.seek(0)
-    return buffer
+    return create_silent_audio()
+
+
+def create_silent_audio():
+  """Create a 1-second silent audio file as fallback"""
+  import wave
+  
+  # Create a 1-second silent audio file
+  sample_rate = 16000
+  duration = 1.0
+  frames = int(sample_rate * duration)
+  
+  # Create in-memory WAV file
+  buffer = io.BytesIO()
+  with wave.open(buffer, 'wb') as wav_file:
+      wav_file.setnchannels(1)  # Mono
+      wav_file.setsampwidth(2)  # 16-bit
+      wav_file.setframerate(sample_rate)
+      wav_file.writeframes(b'\x00\x00' * frames)  # Silent audio
+  
+  buffer.seek(0)
+  return buffer
 
 
 class PerfMeasurement(models.Model):

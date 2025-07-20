@@ -11,7 +11,7 @@ import csv
 
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.shortcuts import render, redirect
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, FileResponse, Http404
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -35,6 +35,21 @@ from .interview_settings import *
 
 from allauth.account.signals import user_signed_up
 from django.dispatch import receiver
+
+
+def serve_media(request, path):
+    """Custom view to serve media files"""
+    try:
+        import os
+        media_root = settings.MEDIA_ROOT
+        file_path = os.path.join(media_root, path)
+        
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(open(file_path, 'rb'))
+        else:
+            raise Http404("File not found")
+    except Exception as e:
+        raise Http404("File not found")
 
 
 def controlled_randomness(weight):
