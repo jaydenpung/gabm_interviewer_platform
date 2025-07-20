@@ -12,12 +12,10 @@ class PagesConfig(AppConfig):
         
         # Check if database is properly migrated before creating admin
         try:
-            # Only run if we can access the database and tables exist
+            # Use Django's database-agnostic approach to check if table exists
             with connection.cursor() as cursor:
-                cursor.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='pages_participant';"
-                )
-                if cursor.fetchone():
+                table_names = connection.introspection.table_names(cursor)
+                if 'pages_participant' in table_names:
                     # Call the management command to create default admin
                     call_command('create_default_admin')
         except Exception as e:
