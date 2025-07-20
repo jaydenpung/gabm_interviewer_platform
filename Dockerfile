@@ -20,4 +20,12 @@ RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "gabm_infra.wsgi:application"]
+# Create startup script
+RUN echo '#!/bin/bash\n\
+python manage.py migrate\n\
+python manage.py create_default_admin\n\
+exec gunicorn --bind 0.0.0.0:8000 gabm_infra.wsgi:application' > /app/start.sh
+
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
