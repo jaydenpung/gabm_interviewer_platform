@@ -3,9 +3,15 @@ import os
 import random
 
 def get_open_api_keyset(): 
+  # Load API key from environment variable
+  api_key = os.getenv('OPENAI_API_KEY')
+  
+  if not api_key:
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
+  
   open_api_keyset = []
-  open_api_keyset += [{"key": "",
-                       "owner": "",
+  open_api_keyset += [{"key": api_key,
+                       "owner": "env_var",
                        "id": 1,
                        "weight": 12}]
 

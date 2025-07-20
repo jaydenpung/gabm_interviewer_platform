@@ -10,7 +10,8 @@ from google.cloud import speech
 import sys
 import os
 
-OPENAI_API_KEY = "" # Percy
+# Load environment variables
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 KEY_OWNER = "Percy Liang"
 
 # DEBUG = False
@@ -21,7 +22,11 @@ STORAGE_DIR = "storage"
 GOOGLE_CRED_PATH = ""
 
 INTERVIEW_AGENT_PATH = "interviewer_agent"
-openai.api_key = OPENAI_API_KEY
+
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
+else:
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
 
 
 def jsp_log(message): 

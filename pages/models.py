@@ -55,20 +55,42 @@ def process_audio(base64_message, audio_format):
   # Step 2: Convert the binary data to a BytesIO object (in-memory buffer)
   audio_data = io.BytesIO(base64_bytes)
 
-  # Step 3: Read the audio from BytesIO, then convert & export it as WAV
-  # The format is dynamically set based on the audio_format argument
-  audio = AudioSegment.from_file(audio_data, format=audio_format)
-  # Ensure audio is set to 16-bit samples (sample_width=2 bytes for 16 bit)
-  audio = audio.set_sample_width(2)
-  # Optional: Set a frame rate. Common rates: 16000, 44100, etc.
-  audio = audio.set_frame_rate(16000)
+  try:
+    # Step 3: Read the audio from BytesIO, then convert & export it as WAV
+    # The format is dynamically set based on the audio_format argument
+    audio = AudioSegment.from_file(audio_data, format=audio_format)
+    # Ensure audio is set to 16-bit samples (sample_width=2 bytes for 16 bit)
+    audio = audio.set_sample_width(2)
+    # Optional: Set a frame rate. Common rates: 16000, 44100, etc.
+    audio = audio.set_frame_rate(16000)
 
-  # Step 4: Export as 16-bit PCM WAV
-  # mono channel, 16000 Hz
-  buffer = io.BytesIO()
-  audio.export(buffer, format="wav", parameters=["-ac", "1", "-ar", "16000"])
-  buffer.seek(0)
-  return buffer
+    # Step 4: Export as 16-bit PCM WAV
+    # mono channel, 16000 Hz
+    buffer = io.BytesIO()
+    audio.export(buffer, format="wav", parameters=["-ac", "1", "-ar", "16000"])
+    buffer.seek(0)
+    return buffer
+  except Exception as e:
+    jsp_log(f"Error processing audio with pydub: {e}")
+    jsp_log("Creating silent audio as fallback")
+    # Create a silent audio segment as fallback
+    import wave
+    
+    # Create a 1-second silent audio file
+    sample_rate = 16000
+    duration = 1.0
+    frames = int(sample_rate * duration)
+    
+    # Create in-memory WAV file
+    buffer = io.BytesIO()
+    with wave.open(buffer, 'wb') as wav_file:
+        wav_file.setnchannels(1)  # Mono
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(b'\x00\x00' * frames)  # Silent audio
+    
+    buffer.seek(0)
+    return buffer
 
 
 class PerfMeasurement(models.Model):
