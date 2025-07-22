@@ -2,8 +2,6 @@
 services:
   web:
     build: .
-    ports:
-    - "8010:8000"
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -19,7 +17,11 @@ services:
     depends_on:
       - db
     labels:
-      - traefik.enable=false
+      - traefik.enable=true
+      - traefik.http.routers.gainterview.rule=Host(`docker-host.java-elevator.ts.net`)
+      - traefik.http.services.gainterview.loadbalancer.server.port=8000
+      - traefik.http.routers.gainterview.entrypoints=websecure
+      - traefik.http.routers.gainterview.tls=true
 
   db:
     image: postgres:15
